@@ -425,7 +425,6 @@ export default function JwtTool() {
               />
             </ToolField>
           </div>
-          <p className="jwt-security-note">{t('tools.jwt.keyPrivacy')}</p>
           <div className="button-row">
             <button
               type="button"
@@ -572,7 +571,6 @@ export default function JwtTool() {
               />
             </ToolField>
           </div>
-          <p className="jwt-security-note">{t('tools.jwt.keyPrivacy')}</p>
           <div className="button-row">
             <button
               type="button"

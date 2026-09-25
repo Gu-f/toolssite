@@ -33,8 +33,10 @@ export default function ToolCatalog({ activeToolId, onSelect }: ToolCatalogProps
   const [collapsedCategories, setCollapsedCategories] = useState<ReadonlySet<string>>(new Set());
   const [theme, setTheme] = useState<Theme>(readStoredTheme);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+  const [isMobileCatalogOpen, setIsMobileCatalogOpen] = useState(false);
   const languageControlRef = useRef<HTMLDivElement | null>(null);
   const languageButtonRef = useRef<HTMLButtonElement | null>(null);
+  const mobileToggleRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -86,6 +88,36 @@ export default function ToolCatalog({ activeToolId, onSelect }: ToolCatalogProps
       window.removeEventListener('blur', closeMenu);
     };
   }, [isLanguageMenuOpen]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 900px)');
+    const handleMediaChange = (event: MediaQueryListEvent) => {
+      if (!event.matches) {
+        setIsMobileCatalogOpen(false);
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleMediaChange);
+
+    return () => mediaQuery.removeEventListener('change', handleMediaChange);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileCatalogOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileCatalogOpen(false);
+        mobileToggleRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileCatalogOpen]);
 
   const toggleTheme = () => {
     setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'));
@@ -168,8 +200,64 @@ export default function ToolCatalog({ activeToolId, onSelect }: ToolCatalogProps
     });
   };
 
+  const handleToolSelect = (toolId: ToolId) => {
+    onSelect(toolId);
+    setIsMobileCatalogOpen(false);
+  };
+
   return (
-    <aside className="tool-catalog">
+    <>
+      <header className="catalog-brand catalog-mobile-header">
+        <span
+          className="brand-mark"
+          aria-hidden="true"
+        >
+          <img
+            src="/toolslogo.webp"
+            alt=""
+            width="28"
+            height="28"
+            decoding="async"
+          />
+        </span>
+        <div>
+          <strong>DevKit</strong>
+          <small>{t('catalog.subtitle')}</small>
+        </div>
+      </header>
+      <button
+        ref={mobileToggleRef}
+        type="button"
+        className="catalog-mobile-toggle"
+        aria-label={t('catalog.navLabel')}
+        aria-expanded={isMobileCatalogOpen}
+        aria-controls="tool-catalog"
+        onClick={() => setIsMobileCatalogOpen((isOpen) => !isOpen)}
+      >
+        <svg
+          aria-hidden="true"
+          width="20"
+          height="20"
+          viewBox="0 0 20 20"
+          fill="none"
+        >
+          <path
+            d="M3 5h14M3 10h14M3 15h14"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+      <div
+        aria-hidden="true"
+        className={`catalog-backdrop${isMobileCatalogOpen ? ' is-open' : ''}`}
+        onClick={() => setIsMobileCatalogOpen(false)}
+      />
+      <aside
+        id="tool-catalog"
+        className={`tool-catalog${isMobileCatalogOpen ? ' is-mobile-open' : ''}`}
+      >
       <div className="catalog-brand">
         <span
           className="brand-mark"
@@ -272,7 +360,7 @@ export default function ToolCatalog({ activeToolId, onSelect }: ToolCatalogProps
                         className={`catalog-item${tool.id === activeToolId ? ' is-active' : ''}`}
                         aria-current={tool.id === activeToolId ? 'page' : undefined}
                         title={tool.label}
-                        onClick={() => onSelect(tool.id)}
+                        onClick={() => handleToolSelect(tool.id)}
                       >
                         <span>{tool.label}</span>
                       </button>
@@ -416,6 +504,7 @@ export default function ToolCatalog({ activeToolId, onSelect }: ToolCatalogProps
           </button>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

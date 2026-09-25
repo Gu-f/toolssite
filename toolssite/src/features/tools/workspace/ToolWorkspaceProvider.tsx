@@ -107,7 +107,8 @@ export default function ToolWorkspaceProvider({
       setStatus('ready');
     };
 
-    initialize().catch(() => {
+    initialize().catch((error) => {
+      console.error('Failed to load the tool workspace from IndexedDB.', error);
       if (isCurrent) {
         setStatus('error');
         setError('workspace.error.load');
@@ -226,7 +227,8 @@ export default function ToolWorkspaceProvider({
       if (closingTab.toolId !== activeToolId) {
         onToolChangeRef.current(nextTab.toolId);
       }
-    } catch {
+    } catch (error) {
+      console.error('Failed to remove the workspace tab from IndexedDB.', error);
       setError('workspace.error.removeTab');
     }
   }, [activeToolId, tabs]);
