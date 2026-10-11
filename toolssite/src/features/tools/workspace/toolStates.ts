@@ -92,6 +92,10 @@ export type DiffToolState = {
   readonly viewMode: DiffViewMode;
 };
 
+export type NotepadToolState = {
+  readonly text: string;
+};
+
 export type ToolStateMap = {
   base64: Base64ToolState;
   url: UrlToolState;
@@ -103,6 +107,7 @@ export type ToolStateMap = {
   color: ColorToolState;
   timestamp: TimestampToolState;
   diff: DiffToolState;
+  notepad: NotepadToolState;
 };
 
 export type ToolStateName = keyof ToolStateMap;
@@ -448,6 +453,17 @@ export const TOOL_STATE_DEFINITIONS = {
         // Existing persisted state predates the split view; keep it readable.
         viewMode: value.viewMode === 'split' ? 'split' : 'unified',
       };
+    },
+  ),
+  notepad: defineToolState(
+    'notepad',
+    { text: '' },
+    (value) => {
+      if (!isRecord(value) || !isString(value.text)) {
+        return null;
+      }
+
+      return { text: value.text };
     },
   ),
 } as const satisfies Record<ToolStateName, ToolStateDefinition<ToolStateName>>;

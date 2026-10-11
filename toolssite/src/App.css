@@ -1541,6 +1541,40 @@ input.code-area,
   opacity: 0.3;
 }
 
+/* Notepad: the text area stretches to fill the remaining workspace height. */
+.tool-page-notepad {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tool-page-notepad .field {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tool-page-notepad .field-control {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.notepad-area {
+  flex: 1;
+  min-height: 240px;
+  resize: none;
+  overflow-y: auto;
+}
+
+.notepad-count {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 /* Responsive behavior, preserving the source's full-height application shell. */
 @media (max-width: 900px) {
   .app-shell {
@@ -1647,6 +1681,12 @@ input.code-area,
     height: auto;
     min-height: 54svh;
     overflow: visible;
+  }
+
+  /* The page height is content-driven on mobile, so keep the notepad tall
+     through its own minimum instead of the flex context. */
+  .notepad-area {
+    min-height: 54svh;
   }
 
   .field-grid,

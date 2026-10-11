@@ -61,6 +61,12 @@ export const TOOLS: readonly Tool[] = [
     category: 'Text',
     description: 'Line-by-line text comparison',
   },
+  {
+    id: 'notepad',
+    label: 'Notepad',
+    category: 'Text',
+    description: 'Scratchpad for temporary plain-text notes',
+  },
 ] as const;
 
 export const TOOL_CATEGORIES: readonly ToolCategory[] = [

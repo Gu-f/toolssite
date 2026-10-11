@@ -8,7 +8,8 @@ export type ToolId =
   | 'regex'
   | 'color'
   | 'timestamp'
-  | 'diff';
+  | 'diff'
+  | 'notepad';
 
 export type ToolCategory =
   | 'Encoding'

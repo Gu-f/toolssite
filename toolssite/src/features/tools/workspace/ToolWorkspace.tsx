@@ -14,6 +14,7 @@ const TOOL_COMPONENTS = {
   color: lazy(() => import('../components/ColorTool')),
   timestamp: lazy(() => import('../components/TimestampTool')),
   diff: lazy(() => import('../components/DiffTool')),
+  notepad: lazy(() => import('../components/NotepadTool')),
 } as const;
 
 export default function ToolWorkspace() {

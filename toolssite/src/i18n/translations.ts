@@ -205,6 +205,12 @@ export const en = {
   'tools.diff.removed': '−{count} removed',
   'tools.diff.firstLines': 'First {count} lines',
   'tools.diff.emptyLine': 'empty line',
+  'tools.notepad.label': 'Notepad',
+  'tools.notepad.description': 'Scratchpad for temporary plain-text notes',
+  'tools.notepad.title': 'Notepad',
+  'tools.notepad.content': 'Notes',
+  'tools.notepad.placeholder': 'Type to keep temporary notes…',
+  'tools.notepad.charCount': '{count} characters',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -418,6 +424,12 @@ export const zh: Record<TranslationKey, string> = {
   'tools.diff.removed': '−{count} 行删除',
   'tools.diff.firstLines': '仅前 {count} 行',
   'tools.diff.emptyLine': '空行',
+  'tools.notepad.label': '记事本',
+  'tools.notepad.description': '临时记录纯文本的记事本',
+  'tools.notepad.title': '记事本',
+  'tools.notepad.content': '记事内容',
+  'tools.notepad.placeholder': '在这里临时记录文本…',
+  'tools.notepad.charCount': '{count} 个字符',
 };
 
 const ERROR_TRANSLATIONS: Readonly<Record<string, TranslationKey>> = {
