@@ -1,7 +1,10 @@
 import { Suspense, lazy } from 'react';
 import { useTranslation } from '../../../i18n/LanguageContext';
+import { DEFAULT_TOOL_ID } from '../registry';
+import type { ToolId } from '../../../types/tool';
 import { useToolWorkspace } from './ToolWorkspaceContext';
 import ToolTabBar from './ToolTabBar';
+import WorkspaceHome from './WorkspaceHome';
 
 const TOOL_COMPONENTS = {
   base64: lazy(() => import('../components/Base64Tool')),
@@ -17,7 +20,11 @@ const TOOL_COMPONENTS = {
   notepad: lazy(() => import('../components/NotepadTool')),
 } as const;
 
-export default function ToolWorkspace() {
+type ToolWorkspaceProps = {
+  onSelectTool: (toolId: ToolId) => void;
+};
+
+export default function ToolWorkspace({ onSelectTool }: ToolWorkspaceProps) {
   const workspace = useToolWorkspace();
   const { t } = useTranslation();
 
@@ -41,7 +48,7 @@ export default function ToolWorkspace() {
     );
   }
 
-  if (workspace.status === 'loading' || !workspace.activeTab) {
+  if (workspace.status === 'loading') {
     return (
       <main className="tool-workspace">
         <div
@@ -54,16 +61,17 @@ export default function ToolWorkspace() {
     );
   }
 
-  const ActiveTool = TOOL_COMPONENTS[workspace.activeTab.toolId];
+  const activeTab = workspace.activeTab;
+  const ActiveTool = activeTab ? TOOL_COMPONENTS[activeTab.toolId] : null;
 
   return (
     <main className="tool-workspace">
       <ToolTabBar
         tabs={workspace.tabs}
-        activeTabId={workspace.activeTab.id}
+        activeTabId={activeTab?.id ?? null}
         onSelect={workspace.activateTab}
         onClose={(tabId) => void workspace.closeTab(tabId)}
-        onCreate={() => void workspace.createTab(workspace.activeTab?.toolId ?? 'base64')}
+        onCreate={() => void workspace.createTab(activeTab?.toolId ?? DEFAULT_TOOL_ID)}
         onCloseTabs={(tabIds) => void workspace.closeTabs(tabIds)}
         onCloseAll={() => void workspace.closeAllTabs()}
         onRename={(tabId, title) => void workspace.renameTab(tabId, title)}
@@ -76,16 +84,22 @@ export default function ToolWorkspace() {
           {workspace.error ? t(workspace.error) : null}
         </p>
       )}
-      <div
-        id="tool-tab-panel"
-        role="tabpanel"
-        className="workspace-content"
-        aria-labelledby={`tool-tab-${workspace.activeTab.id}`}
-      >
-        <Suspense fallback={<div className="tool-loading">{t('common.loading')}</div>}>
-          <ActiveTool />
-        </Suspense>
-      </div>
+      {ActiveTool ? (
+        <div
+          id="tool-tab-panel"
+          role="tabpanel"
+          className="workspace-content"
+          aria-labelledby={`tool-tab-${activeTab?.id}`}
+        >
+          <Suspense fallback={<div className="tool-loading">{t('common.loading')}</div>}>
+            <ActiveTool />
+          </Suspense>
+        </div>
+      ) : (
+        <div className="workspace-content">
+          <WorkspaceHome onSelectTool={onSelectTool} />
+        </div>
+      )}
     </main>
   );
 }

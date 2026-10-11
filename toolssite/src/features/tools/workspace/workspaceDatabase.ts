@@ -30,7 +30,8 @@ export type WorkspaceDatabaseSchema = DBSchema & {
     key: string;
     value: {
       id: 'active';
-      activeTabId: string;
+      // `null` means the home screen is active while tabs stay open.
+      activeTabId: string | null;
       updatedAt: number;
     };
   };
@@ -102,7 +103,6 @@ export async function openWorkspaceDatabase(): Promise<WorkspaceDatabase> {
 
 export async function loadWorkspace(
   database: WorkspaceDatabase,
-  defaultToolId: ToolId,
 ): Promise<WorkspaceSnapshot> {
   const [tabValues, stateValues, activePreference] = await Promise.all([
     database.getAll('tabs'),
@@ -122,37 +122,22 @@ export async function loadWorkspace(
     }
   });
 
+  // A stored `null` keeps the home screen selected; a missing record or a
+  // stale id falls back to the first tab.
   const validActiveTabId = typeof activePreference?.activeTabId === 'string'
     && tabs.some((tab) => tab.id === activePreference.activeTabId)
     ? activePreference.activeTabId
-    : tabs[0]?.id ?? null;
+    : activePreference?.activeTabId === null || tabs.length === 0
+      ? null
+      : tabs[0].id;
 
   if (tabs.length === 0) {
-    const now = Date.now();
-    const defaultTab: ToolTab = {
-      id: crypto.randomUUID(),
-      toolId: defaultToolId,
-      title: null,
-      createdAt: now,
-      updatedAt: now,
-    };
+    // First visit: the home screen is shown instead of auto-creating a tab.
+    if (activePreference) {
+      await database.delete('workspace', ACTIVE_WORKSPACE_KEY);
+    }
 
-    const transaction = database.transaction(['tabs', 'workspace'], 'readwrite');
-    await Promise.all([
-      transaction.objectStore('tabs').add(defaultTab),
-      transaction.objectStore('workspace').put({
-        id: ACTIVE_WORKSPACE_KEY,
-        activeTabId: defaultTab.id,
-        updatedAt: now,
-      }),
-      transaction.done,
-    ]);
-
-    return {
-      tabs: [defaultTab],
-      states: new Map([[defaultTab.id, TOOL_STATE_DEFINITIONS[defaultToolId].defaultValue]]),
-      activeTabId: defaultTab.id,
-    };
+    return { tabs, states, activeTabId: null };
   }
 
   if (activePreference?.activeTabId !== validActiveTabId) {
@@ -164,7 +149,7 @@ export async function loadWorkspace(
 
 export async function saveActiveTabId(
   database: WorkspaceDatabase,
-  activeTabId: string,
+  activeTabId: string | null,
 ): Promise<void> {
   await database.put('workspace', {
     id: ACTIVE_WORKSPACE_KEY,
@@ -233,7 +218,7 @@ export async function removeTab(
 export async function removeTabs(
   database: WorkspaceDatabase,
   tabIds: readonly string[],
-  nextActiveTabId: string,
+  nextActiveTabId: string | null,
 ): Promise<void> {
   const transaction = database.transaction(['tabs', 'states', 'workspace'], 'readwrite');
 
@@ -241,30 +226,26 @@ export async function removeTabs(
     transaction.objectStore('tabs').delete(tabId);
     transaction.objectStore('states').delete(tabId);
   });
-  transaction.objectStore('workspace').put({
-    id: ACTIVE_WORKSPACE_KEY,
-    activeTabId: nextActiveTabId,
-    updatedAt: Date.now(),
-  });
+
+  if (nextActiveTabId) {
+    transaction.objectStore('workspace').put({
+      id: ACTIVE_WORKSPACE_KEY,
+      activeTabId: nextActiveTabId,
+      updatedAt: Date.now(),
+    });
+  } else {
+    transaction.objectStore('workspace').delete(ACTIVE_WORKSPACE_KEY);
+  }
 
   await transaction.done;
 }
 
-export async function removeAllTabs(
-  database: WorkspaceDatabase,
-  replacementTab: ToolTab,
-): Promise<void> {
-  const now = Date.now();
+export async function removeAllTabs(database: WorkspaceDatabase): Promise<void> {
   const transaction = database.transaction(['tabs', 'states', 'workspace'], 'readwrite');
 
   transaction.objectStore('tabs').clear();
   transaction.objectStore('states').clear();
-  transaction.objectStore('tabs').add(replacementTab);
-  transaction.objectStore('workspace').put({
-    id: ACTIVE_WORKSPACE_KEY,
-    activeTabId: replacementTab.id,
-    updatedAt: now,
-  });
+  transaction.objectStore('workspace').delete(ACTIVE_WORKSPACE_KEY);
 
   await transaction.done;
 }

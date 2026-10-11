@@ -17,7 +17,7 @@ export default function App() {
           activeToolId={activeToolId}
           onSelect={selectTool}
         />
-        <ToolWorkspace />
+        <ToolWorkspace onSelectTool={selectTool} />
       </div>
     </ToolWorkspaceProvider>
   );

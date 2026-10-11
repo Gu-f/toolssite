@@ -404,29 +404,27 @@ export default function ToolTabBar({
                   />
                 </svg>
               </button>
-              {tabs.length > 1 && (
-                <button
-                  type="button"
-                  className="tool-tab-close"
-                  aria-label={t('tab.close', { title })}
-                  onClick={() => onClose(tab.id)}
+              <button
+                type="button"
+                className="tool-tab-close"
+                aria-label={t('tab.close', { title })}
+                onClick={() => onClose(tab.id)}
+              >
+                <svg
+                  aria-hidden="true"
+                  width="8"
+                  height="8"
+                  viewBox="0 0 8 8"
+                  fill="none"
                 >
-                  <svg
-                    aria-hidden="true"
-                    width="8"
-                    height="8"
-                    viewBox="0 0 8 8"
-                    fill="none"
-                  >
-                    <path
-                      d="M1.5 1.5l5 5m0-5l-5 5"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              )}
+                  <path
+                    d="M1.5 1.5l5 5m0-5l-5 5"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
             </div>
           );
         })}

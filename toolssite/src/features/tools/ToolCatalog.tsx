@@ -5,7 +5,8 @@ import { useTranslation } from '../../i18n/LanguageContext';
 import type { ToolId } from '../../types/tool';
 
 type ToolCatalogProps = {
-  activeToolId: ToolId;
+  // `null` means the workspace home screen; no sidebar item is highlighted.
+  activeToolId: ToolId | null;
   onSelect: (toolId: ToolId) => void;
 };
 

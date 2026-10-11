@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { TranslationKey } from '../../../i18n/translations';
-import { TOOLS } from '../registry';
 import { generateUuidV7 } from '../../../lib/uuid';
 import type { ToolId } from '../../../types/tool';
 import {
@@ -44,8 +43,9 @@ function discardPendingStateWrites(
 }
 
 type ToolWorkspaceProviderProps = {
-  activeToolId: ToolId;
-  onToolChange: (toolId: ToolId) => void;
+  // `null` means the workspace home screen is requested by the URL.
+  activeToolId: ToolId | null;
+  onToolChange: (toolId: ToolId | null) => void;
   children: ReactNode;
 };
 
@@ -93,7 +93,7 @@ export default function ToolWorkspaceProvider({
         databaseRef.current = database;
       }
 
-      const snapshot = await loadWorkspace(database, TOOLS[0].id);
+      const snapshot = await loadWorkspace(database);
 
       if (!isCurrent) {
         database.close();
@@ -196,7 +196,7 @@ export default function ToolWorkspaceProvider({
   const closeTab = useCallback(async (tabId: string) => {
     const database = databaseRef.current;
 
-    if (!database || tabs.length <= 1) {
+    if (!database) {
       return;
     }
 
@@ -206,8 +206,7 @@ export default function ToolWorkspaceProvider({
       return;
     }
 
-    const closingTab = tabs[closingTabIndex];
-    const nextTab = tabs[closingTabIndex + 1] ?? tabs[closingTabIndex - 1];
+    const nextTab = tabs[closingTabIndex + 1] ?? tabs[closingTabIndex - 1] ?? null;
     discardPendingStateWrites(
       pendingStateWritesRef.current,
       stateTimersRef.current,
@@ -215,17 +214,19 @@ export default function ToolWorkspaceProvider({
     );
 
     try {
-      await removeTabs(database, [tabId], nextTab.id);
+      await removeTabs(database, [tabId], nextTab?.id ?? null);
       setTabs((currentTabs) => currentTabs.filter((tab) => tab.id !== tabId));
       const nextStates = new Map(stateCacheRef.current);
 
       nextStates.delete(tabId);
       stateCacheRef.current = nextStates;
       setStateCache(nextStates);
-      setActiveTabId(nextTab.id);
+      setActiveTabId(nextTab?.id ?? null);
 
-      if (closingTab.toolId !== activeToolId) {
-        onToolChangeRef.current(nextTab.toolId);
+      // Always follow the next active tab so the URL no longer requests the
+      // closed tab's tool (which would otherwise re-open it).
+      if ((nextTab?.toolId ?? null) !== activeToolId) {
+        onToolChangeRef.current(nextTab?.toolId ?? null);
       }
     } catch (error) {
       console.error('Failed to remove the workspace tab from IndexedDB.', error);
@@ -243,18 +244,14 @@ export default function ToolWorkspaceProvider({
     const closingIds = new Set(tabIds);
     const closingTabs = tabs.filter((tab) => closingIds.has(tab.id));
 
-    if (closingTabs.length === 0 || closingTabs.length >= tabs.length) {
+    if (closingTabs.length === 0) {
       return;
     }
 
     const activeTab = tabs.find((tab) => tab.id === activeTabId);
     const nextTab = activeTab && !closingIds.has(activeTab.id)
       ? activeTab
-      : tabs.find((tab) => !closingIds.has(tab.id));
-
-    if (!nextTab) {
-      return;
-    }
+      : tabs.find((tab) => !closingIds.has(tab.id)) ?? null;
 
     discardPendingStateWrites(
       pendingStateWritesRef.current,
@@ -266,7 +263,7 @@ export default function ToolWorkspaceProvider({
       await removeTabs(
         database,
         closingTabs.map((tab) => tab.id),
-        nextTab.id,
+        nextTab?.id ?? null,
       );
 
       const closingIdSet = new Set(closingTabs.map((tab) => tab.id));
@@ -278,10 +275,10 @@ export default function ToolWorkspaceProvider({
       closingTabs.forEach((tab) => nextStates.delete(tab.id));
       stateCacheRef.current = nextStates;
       setStateCache(nextStates);
-      setActiveTabId(nextTab.id);
+      setActiveTabId(nextTab?.id ?? null);
 
-      if (nextTab.toolId !== activeToolId) {
-        onToolChangeRef.current(nextTab.toolId);
+      if ((nextTab?.toolId ?? null) !== activeToolId) {
+        onToolChangeRef.current(nextTab?.toolId ?? null);
       }
     } catch {
       setError('workspace.error.removeTabs');
@@ -301,32 +298,38 @@ export default function ToolWorkspaceProvider({
       tabs.map((tab) => tab.id),
     );
 
-    const now = Date.now();
-    const replacementToolId = activeTab?.toolId ?? activeToolId;
-    const replacementTab: ToolTab = {
-      id: generateUuidV7(),
-      toolId: replacementToolId,
-      title: null,
-      createdAt: now,
-      updatedAt: now,
-    };
-
     try {
-      await removeAllTabs(database, replacementTab);
-      setTabs([replacementTab]);
-      stateCacheRef.current = new Map([
-        [replacementTab.id, TOOL_STATE_DEFINITIONS[replacementToolId].defaultValue],
-      ]);
+      await removeAllTabs(database);
+      setTabs([]);
+      stateCacheRef.current = new Map();
       setStateCache(stateCacheRef.current);
-      setActiveTabId(replacementTab.id);
+      setActiveTabId(null);
 
-      if (replacementToolId !== activeToolId) {
-        onToolChangeRef.current(replacementToolId);
+      if (activeToolId !== null) {
+        onToolChangeRef.current(null);
       }
     } catch {
       setError('workspace.error.clearTabs');
     }
-  }, [activeTab, activeToolId, tabs]);
+  }, [activeToolId, tabs]);
+
+  // Deselects the active tab without closing it: the home screen is shown
+  // while the saved tabs stay listed in the tab bar.
+  const clearActiveTab = useCallback(async () => {
+    const database = databaseRef.current;
+
+    setActiveTabId(null);
+
+    if (!database) {
+      return;
+    }
+
+    try {
+      await saveActiveTabId(database, null);
+    } catch {
+      setError('workspace.error.saveActiveTab');
+    }
+  }, []);
 
   const renameTab = useCallback(async (tabId: string, title: string) => {
     const database = databaseRef.current;
@@ -348,21 +351,35 @@ export default function ToolWorkspaceProvider({
   }, [tabs]);
 
   useEffect(() => {
-    if (status !== 'ready' || !activeTab) {
+    if (status !== 'ready') {
       return;
     }
 
     if (!hasInitializedSelectionRef.current) {
       hasInitializedSelectionRef.current = true;
 
-      if (shouldRestoreActiveTab && activeTab.toolId !== activeToolId) {
-        onToolChangeRef.current(activeTab.toolId);
+      // Restore the previously active tab unless the URL explicitly requests
+      // a tool; with no stored active tab (home), fall through to URL sync.
+      if (shouldRestoreActiveTab && activeTab) {
+        if (activeTab.toolId !== activeToolId) {
+          onToolChangeRef.current(activeTab.toolId);
+        }
+
+        return;
+      }
+    }
+
+    if (activeToolId === null) {
+      // The URL points at the home screen: keep saved tabs listed but show
+      // home until a tool is picked or a tab is activated again.
+      if (activeTab) {
+        void clearActiveTab();
       }
 
       return;
     }
 
-    if (activeTab.toolId === activeToolId) {
+    if (activeTab && activeTab.toolId === activeToolId) {
       return;
     }
 
@@ -379,7 +396,7 @@ export default function ToolWorkspaceProvider({
     if (!creatingToolIdsRef.current.has(activeToolId)) {
       void createTab(activeToolId);
     }
-  }, [activeTab, activeToolId, activateTab, createTab, shouldRestoreActiveTab, status, tabs]);
+  }, [activeTab, activeToolId, activateTab, clearActiveTab, createTab, shouldRestoreActiveTab, status, tabs]);
 
   const getState = useCallback(
     <TName extends ToolStateName>(
