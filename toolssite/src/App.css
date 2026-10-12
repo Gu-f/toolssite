@@ -1462,13 +1462,83 @@ input.code-area,
   font-size: 13px;
 }
 
+/* Diff: the page is a flex column so the result stretches to the remaining
+   viewport height once the inputs are collapsed after a comparison. */
+.tool-page-diff {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+}
+
+.tool-page-diff .diff-output-field {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  /* Floor the result so long inputs above can never squeeze it away
+     (3x the old fixed 160px output height). */
+  min-height: 480px;
+}
+
+.tool-page-diff .diff-output-field .field-control {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ToolField wraps its children once more; keep the stretch chain unbroken
+   down to the scrolling output. */
+.tool-page-diff .diff-output-wrapper {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.diff-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diff-inputs-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.15s ease;
+}
+
+.diff-inputs-toggle:hover {
+  color: var(--text);
+}
+
+.diff-inputs-toggle .button-icon {
+  transition: transform 0.15s ease;
+}
+
+.diff-inputs-toggle[aria-expanded='false'] .button-icon {
+  transform: rotate(-90deg);
+}
+
 .diff-output {
-  max-height: 320px;
+  flex: 1;
+  min-height: 0;
   font-size: 13px;
   line-height: 1.625;
 }
 
 .diff-output.code-area-output {
+  height: auto;
   overflow: auto;
 }
 
@@ -1539,6 +1609,58 @@ input.code-area,
 
 .empty-line {
   opacity: 0.3;
+}
+
+.diff-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diff-fold-toggle {
+  padding: 6px 12px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+}
+
+.diff-fold-toggle:hover {
+  color: var(--cyan);
+  border-color: rgba(0, 212, 255, 0.3);
+}
+
+/* Bar shown in place of a folded run of unchanged lines. */
+.diff-fold-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 2px 8px;
+  padding: 3px 8px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.diff-fold-bar:hover {
+  color: var(--cyan);
+  border-color: rgba(0, 212, 255, 0.35);
+}
+
+.diff-split .diff-fold-bar {
+  grid-column: 1 / -1;
 }
 
 /* Notepad: the text area stretches to fill the remaining workspace height. */
@@ -2104,6 +2226,21 @@ input.code-area,
 
 :root[data-theme='light'] .diff-cell:nth-child(even) {
   border-left-color: rgba(15, 23, 42, 0.1);
+}
+
+:root[data-theme='light'] .diff-fold-toggle {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+:root[data-theme='light'] .diff-fold-toggle:hover,
+:root[data-theme='light'] .diff-fold-bar:hover {
+  border-color: rgba(3, 105, 161, 0.4);
+}
+
+:root[data-theme='light'] .diff-fold-bar {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(15, 23, 42, 0.03);
 }
 
 :root[data-theme='light'] .home-stat {

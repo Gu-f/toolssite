@@ -21,9 +21,23 @@ export type DifferenceSplitRow = {
   readonly type: DifferenceSplitRowType;
   readonly left: DifferenceLine | null;
   readonly right: DifferenceLine | null;
+  /** Index of the row's first source line, so split rows can share fold ranges. */
+  readonly lineIndex: number;
+};
+
+/** A range of unchanged lines hidden behind a single "expand" bar. */
+export type DifferenceFold = {
+  /** Index of the first folded line (inclusive). */
+  readonly start: number;
+  /** Index after the last folded line (exclusive). */
+  readonly end: number;
 };
 
 export const MAX_DIFF_LINES = 5000;
+/** Unchanged context lines kept visible around each hunk as a buffer. */
+export const DIFF_FOLD_CONTEXT_LINES = 3;
+/** A same-content run only folds when its hidden middle reaches this size. */
+export const DIFF_FOLD_MIN_HIDDEN_LINES = 3;
 const MAX_LINE_DIFF_CELLS = 16_000_000;
 const MAX_CHARACTER_DIFF_CELLS = 2_000_000;
 const MAX_CHARACTER_DIFF_LINE_LENGTH = 256;
@@ -421,19 +435,52 @@ export function buildSplitRows(diff: readonly DifferenceLine[]): DifferenceSplit
     const line = diff[index];
 
     if (line.type === 'remove' && diff[index + 1]?.type === 'add') {
-      rows.push({ type: 'change', left: line, right: diff[index + 1] });
+      rows.push({ type: 'change', left: line, right: diff[index + 1], lineIndex: index });
       index += 1;
       continue;
     }
 
     if (line.type === 'same') {
-      rows.push({ type: 'same', left: line, right: line });
+      rows.push({ type: 'same', left: line, right: line, lineIndex: index });
     } else if (line.type === 'remove') {
-      rows.push({ type: 'remove', left: line, right: null });
+      rows.push({ type: 'remove', left: line, right: null, lineIndex: index });
     } else {
-      rows.push({ type: 'add', left: null, right: line });
+      rows.push({ type: 'add', left: null, right: line, lineIndex: index });
     }
   }
 
   return rows;
+}
+
+/**
+ * Find the unchanged interiors of long same-content runs, keeping
+ * `contextLines` of unchanged buffer around every hunk like GitHub does.
+ */
+export function buildDiffFolds(
+  diff: readonly DifferenceLine[],
+  contextLines: number = DIFF_FOLD_CONTEXT_LINES,
+): DifferenceFold[] {
+  const folds: DifferenceFold[] = [];
+  let runStart = -1;
+
+  for (let index = 0; index <= diff.length; index += 1) {
+    const isSame = index < diff.length && diff[index].type === 'same';
+
+    if (isSame && runStart < 0) {
+      runStart = index;
+    }
+
+    if (!isSame && runStart >= 0) {
+      const start = runStart + contextLines;
+      const end = index - contextLines;
+
+      if (end - start >= DIFF_FOLD_MIN_HIDDEN_LINES) {
+        folds.push({ start, end });
+      }
+
+      runStart = -1;
+    }
+  }
+
+  return folds;
 }

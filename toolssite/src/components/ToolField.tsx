@@ -11,6 +11,7 @@ type ToolFieldProps = {
    * `aria-labelledby` instead of an invalid `label[for]` association.
    */
   labelTarget?: 'control' | 'panel';
+  className?: string;
   children: ReactNode;
 };
 
@@ -20,10 +21,11 @@ export default function ToolField({
   extra,
   overlay,
   labelTarget = 'control',
+  className,
   children,
 }: ToolFieldProps) {
   return (
-    <div className="field">
+    <div className={className ? `field ${className}` : 'field'}>
       <div className="field-header">
         {labelTarget === 'control' ? (
           <label
